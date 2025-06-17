@@ -4,7 +4,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 import os
-from streamlit_js_eval import streamlit_js_eval
+from streamlit_folium import st_folium
+import folium
 
 st.set_page_config(page_title="Sistema de Ponto", page_icon="🕒", layout="wide")
 st.title("🕒 Sistema de Registro de Ponto - Web")
@@ -132,24 +133,21 @@ if cpf and nome:
     else:
         st.sidebar.info(f"Bem-vindo(a) {nome}!")
 
-    st.sidebar.subheader("📍 Localização (Puxada automática)")
+    st.sidebar.subheader("📍 Localização (clique no mapa)")
 
-    loc = streamlit_js_eval(
-        js_expressions="navigator.geolocation.getCurrentPosition((pos) => {return {latitude: pos.coords.latitude, longitude: pos.coords.longitude};})",
-        key="getGeoLocation"
-    )
-    
-    if loc and isinstance(loc, dict):
-        latitude = str(loc.get("latitude", ""))
-        longitude = str(loc.get("longitude", ""))
-        st.sidebar.success(f"📍 Localização capturada")
+    m = folium.Map(location=[-23.55052, -46.633308], zoom_start=3)
+    m.add_child(folium.LatLngPopup())
+
+    output = st_folium(m, width=700, height=500)
+
+    if output['last_clicked'] is not None:
+        latitude = output['last_clicked']['lat']
+        longitude = output['last_clicked']['lng']
+        st.sidebar.success(f"📍 Localização capturada: {latitude}, {longitude}")
     else:
         latitude = ""
         longitude = ""
-        st.sidebar.warning("⚠️ Permita o acesso à sua localização no navegador!")
-
-    st.sidebar.write(f"Latitude: {latitude}")
-    st.sidebar.write(f"Longitude: {longitude}")
+        st.sidebar.warning("⚠️ Clique no mapa para capturar sua localização.")
 
     st.subheader("Registrar Ponto")
     tipo = st.selectbox("Tipo de Ponto", ["Entrada", "Saída", "Pausa", "Retorno"])
@@ -158,7 +156,7 @@ if cpf and nome:
         if latitude and longitude:
             registrar_ponto(cpf, tipo, latitude, longitude)
         else:
-            st.warning("⚠️ A localização não foi capturada. Verifique se você permitiu o acesso no navegador.")
+            st.warning("⚠️ A localização não foi capturada. Clique no mapa para selecionar.")
 
     st.subheader("📑 Relatórios")
     aba = st.radio("Escolha uma opção", ["Espelho de Ponto", "Horas Trabalhadas", "Banco de Horas"])
